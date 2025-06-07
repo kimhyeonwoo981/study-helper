@@ -56,7 +56,9 @@ export default function ChatPage() {
         for (const unit of units) {
           const key = `question_by_unit_${subject}_${unit}`;
           const existing: Message[] = JSON.parse(localStorage.getItem(key) || '[]');
-          const idx = existing.findIndex((m) => m.sender === 'user' && m.text === removed.text);
+          const idx = existing.findIndex(
+            (m) => m.sender === 'user' && m.text === removed.text
+          );
           if (idx !== -1 && existing[idx + 1]?.sender === 'gpt') {
             existing.splice(idx, 2);
             localStorage.setItem(key, JSON.stringify(existing));
@@ -161,12 +163,19 @@ export default function ChatPage() {
       if (done) break;
       answer += decoder.decode(value);
 
-      setMessages((prev: Message[]): Message[] => {
+      setMessages((prev) => {
         const last = prev[prev.length - 1];
+
+        const newGptMessage: Message = {
+          sender: 'gpt',
+          text: answer,
+        };
+
         const updated: Message[] =
           last?.sender === 'gpt'
             ? [...prev.slice(0, -1), { ...last, text: answer }]
-            : [...prev, { sender: 'gpt', text: answer } as const];
+            : [...prev, newGptMessage];
+
         localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
         return updated;
       });
