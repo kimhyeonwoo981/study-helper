@@ -168,7 +168,7 @@ export default function ChatPage() {
       if (done) break;
       answer += decoder.decode(value);
 
-      setMessages((prev: Message[]): Message[] => {
+      setMessages((prev): Message[] => {
         const last = prev[prev.length - 1];
         const updated: Message[] =
           last?.sender === 'gpt'
