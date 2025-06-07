@@ -56,7 +56,9 @@ export default function ChatPage() {
         for (const unit of units) {
           const key = `question_by_unit_${subject}_${unit}`;
           const existing = JSON.parse(localStorage.getItem(key) || '[]');
-          const idx = existing.findIndex((m: Message) => m.sender === 'user' && m.text === removed.text);
+          const idx = existing.findIndex(
+            (m: Message) => m.sender === 'user' && m.text === removed.text
+          );
           if (idx !== -1 && existing[idx + 1]?.sender === 'gpt') {
             existing.splice(idx, 2);
             localStorage.setItem(key, JSON.stringify(existing));
@@ -123,7 +125,9 @@ export default function ChatPage() {
           {
             role: 'user',
             content: `아래는 사용자의 질문입니다. 이 질문은 다음 과목의 한 단원에만 해당합니다.\n후보: ${Object.entries(map)
-              .map(([subject, units]) => (units as string[]).map((u) => `${subject} > ${u}`).join(', '))
+              .map(([subject, units]) =>
+                (units as string[]).map((u) => `${subject} > ${u}`).join(', ')
+              )
               .join(', ')}\n\n질문과 가장 관련이 있다고 판단되는 과목의 단원 하나만 아래 형식으로 먼저 알려주세요.\n예시: 과목명,단원명\n\n그 다음 줄부터는 해당 단원의 관점에서 질문에 대한 답을 해주세요.\n\n질문: ${questionText}`.trim(),
           },
         ];
@@ -166,7 +170,7 @@ export default function ChatPage() {
         const updated: Message[] =
           last?.sender === 'gpt'
             ? [...prev.slice(0, -1), { ...last, text: answer }]
-            : [...prev, { sender: 'gpt', text: answer } as Message];
+            : [...prev, { sender: 'gpt' as const, text: answer }];
         localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
         return updated;
       });
@@ -204,7 +208,9 @@ export default function ChatPage() {
             )}
 
             <span
-              className={`inline-block px-2 py-1 rounded whitespace-pre-wrap break-words ${msg.sender === 'user' ? 'bg-blue-100' : 'bg-gray-100'}`}
+              className={`inline-block px-2 py-1 rounded whitespace-pre-wrap break-words ${
+                msg.sender === 'user' ? 'bg-blue-100' : 'bg-gray-100'
+              }`}
             >
               {msg.sender === 'gpt' && msg.collapsed ? '[+]' : msg.text}
             </span>
@@ -233,10 +239,7 @@ export default function ChatPage() {
           <input type="file" accept="image/*" onChange={handleImageChange} hidden />
         </label>
 
-        <button
-          onClick={handleSend}
-          className="px-4 py-2 bg-blue-500 text-white rounded"
-        >
+        <button onClick={handleSend} className="px-4 py-2 bg-blue-500 text-white rounded">
           전송
         </button>
       </div>
