@@ -166,7 +166,7 @@ export default function ChatPage() {
         const updated: Message[] =
           last?.sender === 'gpt'
             ? [...prev.slice(0, -1), { ...last, text: answer }]
-            : [...prev, { sender: 'gpt', text: answer }];
+            : [...prev, { sender: 'gpt', text: answer } as Message];
         localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
         return updated;
       });
