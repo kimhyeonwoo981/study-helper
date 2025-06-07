@@ -10,6 +10,11 @@ interface Message {
   collapsed?: boolean;
 }
 
+const makeGptMessage = (text: string): Message => ({
+  sender: 'gpt',
+  text,
+});
+
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const date = searchParams.get('date') || 'no-date';
@@ -94,7 +99,7 @@ export default function ChatPage() {
     }
     const key = `question_by_unit_Unsorted_미분류`;
     const existing: Message[] = JSON.parse(localStorage.getItem(key) || '[]');
-    const gptMessage: Message = { sender: 'gpt', text: answer.trim() };
+    const gptMessage = makeGptMessage(answer.trim());
     localStorage.setItem(key, JSON.stringify([...existing, userMessage, gptMessage]));
   };
 
@@ -147,7 +152,7 @@ export default function ChatPage() {
       const data = await res.json();
       const answer = data.reply || '응답 없음';
       saveToUnitKey(userMessage, answer);
-      saveMessages([...updatedMessages, { sender: 'gpt', text: answer } as Message]);
+      saveMessages([...updatedMessages, makeGptMessage(answer)]);
       setImage(null);
       setImagePreview('');
       return;
@@ -168,7 +173,7 @@ export default function ChatPage() {
         const updated: Message[] =
           last?.sender === 'gpt'
             ? [...prev.slice(0, -1), { ...last, text: answer }]
-            : [...prev, { sender: 'gpt', text: answer } as Message];
+            : [...prev, makeGptMessage(answer)];
         localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
         return updated;
       });
