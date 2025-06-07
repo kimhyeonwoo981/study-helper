@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 
 interface Message {
   sender: 'user' | 'gpt';
@@ -10,9 +11,10 @@ interface Message {
 
 const normalizeKey = (str: string) => str.replace(/\s+/g, '');
 
-export default function Page({ params }: { params: { subject: string } }) {
+export default function Page() {
+  const params = useParams();
+  const subject = decodeURIComponent(params.subject as string);
   const [questions, setQuestions] = useState<Record<string, Message[]>>({});
-  const subject = decodeURIComponent(params.subject);
 
   useEffect(() => {
     const mapRaw = localStorage.getItem('question_unit_map');
