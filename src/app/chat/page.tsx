@@ -147,7 +147,7 @@ export default function ChatPage() {
       const data = await res.json();
       const answer = data.reply || '응답 없음';
       saveToUnitKey(userMessage, answer);
-      saveMessages([...updatedMessages, { sender: 'gpt', text: answer }]);
+      saveMessages([...updatedMessages, { sender: 'gpt', text: answer } as Message]);
       setImage(null);
       setImagePreview('');
       return;
@@ -163,7 +163,7 @@ export default function ChatPage() {
       if (done) break;
       answer += decoder.decode(value);
 
-      setMessages((prev) => {
+      setMessages((prev: Message[]): Message[] => {
         const last = prev[prev.length - 1];
         const updated: Message[] =
           last?.sender === 'gpt'
