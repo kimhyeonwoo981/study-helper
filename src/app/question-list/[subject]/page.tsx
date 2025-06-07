@@ -1,9 +1,8 @@
-import dynamic from 'next/dynamic';
+// 'use client'; ❌ 절대 넣지 마 (서버 컴포넌트)
 
-// 👇 이 줄이 핵심!
+import ClientPage from './ClientPage';
+
 export const dynamicParams = false;
-
-const ClientPage = dynamic(() => import('./ClientPage'), { ssr: false });
 
 export default function Page() {
   return <ClientPage />;
