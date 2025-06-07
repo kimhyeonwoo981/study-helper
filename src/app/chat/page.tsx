@@ -85,7 +85,6 @@ export default function ChatPage() {
   };
 
   const saveToUnitKey = (userMessage: Message, answer: string) => {
-    // 무조건 미분류로 저장
     const map = JSON.parse(localStorage.getItem('question_unit_map') || '{}');
     if (!map.Unsorted || !map.Unsorted.includes('미분류')) {
       map.Unsorted = ['미분류'];
@@ -93,10 +92,8 @@ export default function ChatPage() {
     }
     const key = `question_by_unit_Unsorted_미분류`;
     const existing = JSON.parse(localStorage.getItem(key) || '[]');
-    localStorage.setItem(
-      key,
-      JSON.stringify([...existing, userMessage, { sender: 'gpt', text: answer.trim() }])
-    );
+    const gptMessage: Message = { sender: 'gpt', text: answer.trim() };
+    localStorage.setItem(key, JSON.stringify([...existing, userMessage, gptMessage]));
   };
 
   const handleSend = async () => {
@@ -163,9 +160,10 @@ export default function ChatPage() {
       const { done, value } = await reader.read();
       if (done) break;
       answer += decoder.decode(value);
+
       setMessages((prev) => {
         const last = prev[prev.length - 1];
-        const updated =
+        const updated: Message[] =
           last?.sender === 'gpt'
             ? [...prev.slice(0, -1), { ...last, text: answer }]
             : [...prev, { sender: 'gpt', text: answer }];
