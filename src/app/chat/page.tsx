@@ -10,6 +10,7 @@ interface Message {
   collapsed?: boolean;
 }
 
+// ✅ 여기에 타입 명시 확실하게 추가!
 const makeGptMessage = (text: string): Message => ({
   sender: 'gpt',
   text,
