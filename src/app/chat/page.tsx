@@ -10,6 +10,11 @@ interface Message {
   collapsed?: boolean;
 }
 
+const makeGptMessage = (text: string): Message => ({
+  sender: 'gpt',
+  text,
+});
+
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const date = searchParams.get('date') || 'no-date';
@@ -147,7 +152,7 @@ export default function ChatPage() {
       const data = await res.json();
       const answer = data.reply || '응답 없음';
       saveToUnitKey(userMessage, answer);
-      saveMessages([...updatedMessages, { sender: 'gpt', text: answer } as Message]);
+      saveMessages([...updatedMessages, makeGptMessage(answer)]);
       setImage(null);
       setImagePreview('');
       return;
@@ -156,8 +161,7 @@ export default function ChatPage() {
     const reader = res.body?.getReader();
     if (!reader) return;
     const decoder = new TextDecoder();
-    let answer: string = '';
-
+    let answer = '';
 
     while (true) {
       const { done, value } = await reader.read();
@@ -165,21 +169,14 @@ export default function ChatPage() {
       answer += decoder.decode(value);
 
       setMessages((prev): Message[] => {
-  const last = prev[prev.length - 1];
-  let newMessage: Message;
-
-  if (last?.sender === 'gpt') {
-    const updated = [...prev.slice(0, -1), { ...last, text: answer }];
-    localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
-    return updated;
-  } else {
-    newMessage = { sender: 'gpt', text: answer };
-    const updated = [...prev, newMessage];
-    localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
-    return updated;
-  }
-});
-
+        const last = prev[prev.length - 1];
+        const updated: Message[] =
+          last?.sender === 'gpt'
+            ? [...prev.slice(0, -1), { ...last, text: answer }]
+            : [...prev, makeGptMessage(answer)];
+        localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
+        return updated;
+      });
     }
 
     saveToUnitKey(userMessage, answer);
