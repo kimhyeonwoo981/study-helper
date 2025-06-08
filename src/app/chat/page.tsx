@@ -165,14 +165,21 @@ export default function ChatPage() {
       answer += decoder.decode(value);
 
       setMessages((prev): Message[] => {
-        const last = prev[prev.length - 1];
-        const updated: Message[] =
-          last?.sender === 'gpt'
-            ? [...prev.slice(0, -1), { ...last, text: answer }]
-            : [...prev, { sender: 'gpt', text: answer } as Message]; // ✅ 이 한 줄이 핵심
-        localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
-        return updated;
-      });
+  const last = prev[prev.length - 1];
+  let newMessage: Message;
+
+  if (last?.sender === 'gpt') {
+    const updated = [...prev.slice(0, -1), { ...last, text: answer }];
+    localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
+    return updated;
+  } else {
+    newMessage = { sender: 'gpt', text: answer };
+    const updated = [...prev, newMessage];
+    localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
+    return updated;
+  }
+});
+
     }
 
     saveToUnitKey(userMessage, answer);
