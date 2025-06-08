@@ -156,7 +156,8 @@ export default function ChatPage() {
     const reader = res.body?.getReader();
     if (!reader) return;
     const decoder = new TextDecoder();
-    let answer = '';
+    let answer: string = '';
+
 
     while (true) {
       const { done, value } = await reader.read();
