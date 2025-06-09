@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+// 메시지 타입을 정의합니다. sender는 'user' 또는 'gpt'만 가능합니다.
 interface Message {
   sender: 'user' | 'gpt';
   text: string;
@@ -10,6 +11,7 @@ interface Message {
   collapsed?: boolean;
 }
 
+// GPT 메시지를 생성하는 헬퍼 함수입니다.
 const makeGptMessage = (text: string): Message => ({
   sender: 'gpt',
   text,
@@ -25,6 +27,7 @@ export default function ChatPage() {
   const [imagePreview, setImagePreview] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 페이지 로드 시 localStorage에서 대화 기록 불러오기
   useEffect(() => {
     const key = `chat_${date}`;
     const saved = localStorage.getItem(key);
@@ -33,15 +36,17 @@ export default function ChatPage() {
         const parsed: Message[] = JSON.parse(saved);
         setMessages(parsed);
       } catch (e) {
-        console.error('불러오기 실패:', e);
+        console.error('대화 기록 불러오기 실패:', e);
       }
     }
   }, [date]);
 
+  // 새 메시지가 추가될 때마다 스크롤을 맨 아래로 이동
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // 메시지 상태를 업데이트하고 localStorage에 저장하는 함수
   const saveMessages = (updated: Message[]) => {
     setMessages(updated);
     localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
@@ -51,9 +56,11 @@ export default function ChatPage() {
     const next = [...messages];
     const removed = next[index];
     next.splice(index, 1);
+    // 사용자 메시지와 짝이 되는 GPT 메시지도 함께 삭제
     if (next[index]?.sender === 'gpt') next.splice(index, 1);
     saveMessages(next);
 
+    // 연결된 질문 리스트에서도 해당 내용 삭제
     if (removed?.sender === 'user') {
       const map = JSON.parse(localStorage.getItem('question_unit_map') || '{}');
       for (const [subject, unitsRaw] of Object.entries(map)) {
@@ -74,6 +81,7 @@ export default function ChatPage() {
     }
   };
 
+  // GPT 답변 접기/펴기
   const toggleCollapse = (index: number) => {
     const next = [...messages];
     if (next[index]?.sender === 'gpt') {
@@ -82,6 +90,7 @@ export default function ChatPage() {
     }
   };
 
+  // 이미지 파일 변경 처리
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -91,6 +100,7 @@ export default function ChatPage() {
     reader.readAsDataURL(file);
   };
 
+  // 미분류 키로 질문/답변 저장
   const saveToUnitKey = (userMessage: Message, answer: string) => {
     const map = JSON.parse(localStorage.getItem('question_unit_map') || '{}');
     if (!map.Unsorted || !map.Unsorted.includes('미분류')) {
@@ -103,17 +113,21 @@ export default function ChatPage() {
     localStorage.setItem(key, JSON.stringify([...existing, userMessage, gptMessage]));
   };
 
+  // 메시지 전송 처리
   const handleSend = async () => {
     if (!input.trim() && !imagePreview) return;
 
     const questionText = input.trim();
     const userMessage: Message = {
       sender: 'user',
-      text: (image ? '[이미지 첨부됨]\n' : '') + questionText,
+      text: (image ? `[이미지 첨부됨]\n` : '') + questionText,
       date,
     };
+    
+    // 사용자 메시지를 먼저 화면에 표시
     const updatedMessages = [...messages, userMessage];
     saveMessages(updatedMessages);
+    setInput(''); // 입력창 비우기
 
     const map = JSON.parse(localStorage.getItem('question_unit_map') || '{}');
     const prompt = imagePreview
@@ -145,9 +159,12 @@ export default function ChatPage() {
       const errorText = await res.text();
       console.error('❌ GPT 응답 실패:', errorText);
       alert('GPT 응답 실패:\n' + errorText);
+      // 실패 시 사용자 메시지 제거
+      saveMessages(messages);
       return;
     }
 
+    // 이미지 질문 처리
     if (imagePreview) {
       const data = await res.json();
       const answer = data.reply || '응답 없음';
@@ -158,91 +175,109 @@ export default function ChatPage() {
       return;
     }
 
+    // 스트리밍 텍스트 답변 처리
     const reader = res.body?.getReader();
     if (!reader) return;
     const decoder = new TextDecoder();
     let answer = '';
 
+    // GPT 답변을 받을 빈 메시지 공간을 먼저 추가
+    setMessages((prev) => [...prev, makeGptMessage('...')]);
+
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        // 스트리밍이 끝나면 최종본을 localStorage에 저장
+        saveToUnitKey(userMessage, answer);
+        const finalMessages = [...updatedMessages, makeGptMessage(answer)];
+        saveMessages(finalMessages);
+        break;
+      }
       answer += decoder.decode(value);
-
-      setMessages((prev): Message[] => {
-        const last = prev[prev.length - 1];
-        const updated: Message[] =
-          last?.sender === 'gpt'
-            ? [...prev.slice(0, -1), { ...last, text: answer }]
-            : [...prev, makeGptMessage(answer)];
-        localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
-        return updated;
+      
+      // ✅ [수정된 부분] 타입 에러 해결
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        // 마지막 메시지(GPT 답변)의 내용을 계속 업데이트
+        if (newMessages.length > 0 && newMessages[newMessages.length - 1].sender === 'gpt') {
+          newMessages[newMessages.length - 1].text = answer;
+        }
+        return newMessages;
       });
     }
-
-    saveToUnitKey(userMessage, answer);
   };
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="p-2 border-b text-sm">📅 {date}</div>
-
-      <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex flex-col h-screen bg-white">
+      <div className="p-2 border-b text-sm text-center font-semibold">📅 {date}</div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`mb-2 relative ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}
+            className={`flex items-end gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            {msg.sender === 'user' && (
-              <button
-                onClick={() => handleDelete(i)}
-                className="absolute top-1 right-2 text-xs text-gray-500 hover:text-red-500"
-              >
-                ❌
-              </button>
-            )}
-
-            {msg.sender === 'gpt' && (
-              <button
-                onClick={() => toggleCollapse(i)}
-                className="absolute top-1 right-2 text-xs text-gray-500 hover:text-blue-500"
-              >
-                {msg.collapsed ? '[+]' : '[-]'}
-              </button>
-            )}
-
-            <span
-              className={`inline-block px-2 py-1 rounded whitespace-pre-wrap break-words ${msg.sender === 'user' ? 'bg-blue-100' : 'bg-gray-100'}`}
+            <div
+              className={`relative max-w-lg px-3 py-2 rounded-lg whitespace-pre-wrap break-words ${
+                msg.sender === 'user'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-800'
+              }`}
             >
-              {msg.sender === 'gpt' && msg.collapsed ? '[+]' : msg.text}
-            </span>
+              {msg.sender === 'gpt' && msg.collapsed ? '[답변 내용 숨김]' : msg.text}
+              
+              {msg.sender === 'user' && (
+                <button
+                  onClick={() => handleDelete(i)}
+                  className="absolute -top-2 -left-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-50 hover:opacity-100"
+                  title="삭제"
+                >
+                  &times;
+                </button>
+              )}
+              {msg.sender === 'gpt' && (
+                <button
+                  onClick={() => toggleCollapse(i)}
+                  className="absolute -top-2 -right-2 w-5 h-5 bg-blue-400 text-white rounded-full text-xs flex items-center justify-center opacity-50 hover:opacity-100"
+                  title={msg.collapsed ? '펴기' : '접기'}
+                >
+                  {msg.collapsed ? '+' : '-'}
+                </button>
+              )}
+            </div>
           </div>
         ))}
         <div ref={scrollRef} />
       </div>
 
-      <div className="p-4 flex gap-2 border-t">
+      {imagePreview && (
+        <div className="p-2 border-t text-center">
+          <img src={imagePreview} alt="Preview" className="max-h-32 inline-block" />
+          <button onClick={() => { setImage(null); setImagePreview(''); }} className="text-red-500 ml-2">취소</button>
+        </div>
+      )}
+
+      <div className="p-2 flex gap-2 border-t bg-gray-50">
+        <label className="cursor-pointer flex items-center justify-center px-3 bg-gray-200 rounded-md hover:bg-gray-300">
+          📷
+          <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+        </label>
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="질문을 입력하세요"
-          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing && !e.shiftKey) {
               e.preventDefault();
               handleSend();
             }
           }}
-          className="flex-1 border p-2 rounded"
+          className="flex-1 border p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
         />
-
-        <label className="cursor-pointer px-2 py-1 bg-gray-200 rounded">
-          +
-          <input type="file" accept="image/*" onChange={handleImageChange} hidden />
-        </label>
-
         <button
           onClick={handleSend}
-          className="px-4 py-2 bg-blue-500 text-white rounded"
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
+          disabled={!input.trim() && !imagePreview}
         >
           전송
         </button>
