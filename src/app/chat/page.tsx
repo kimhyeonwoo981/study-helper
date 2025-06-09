@@ -128,6 +128,8 @@ export default function ChatPage() {
     const updatedMessages = [...messages, userMessage];
     saveMessages(updatedMessages);
     setInput(''); // 입력창 비우기
+    setImage(null);
+    setImagePreview('');
 
     const map = JSON.parse(localStorage.getItem('question_unit_map') || '{}');
     const prompt = imagePreview
@@ -170,8 +172,6 @@ export default function ChatPage() {
       const answer = data.reply || '응답 없음';
       saveToUnitKey(userMessage, answer);
       saveMessages([...updatedMessages, makeGptMessage(answer)]);
-      setImage(null);
-      setImagePreview('');
       return;
     }
 
@@ -193,15 +193,17 @@ export default function ChatPage() {
       }
       answer += decoder.decode(value);
       
-      // ❗ [최종 수정된 부분] 타입 에러 해결을 위한 명확한 상태 업데이트
+      // ❗ [최종 수정된 부분] 타입 단언을 추가하여 타입을 강제
       setMessages((prevMessages) => {
         // 1. 마지막 메시지가 GPT 메시지인지 확인
         if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].sender === 'gpt') {
             // 2. 새로운 메시지 객체를 명시적으로 생성 (불변성 유지)
-            const updatedLastMessage: Message = {
-                ...prevMessages[prevMessages.length - 1],
+            const lastMessage = prevMessages[prevMessages.length - 1];
+            const updatedLastMessage = {
+                ...lastMessage,
                 text: answer,
-            };
+            } as Message; // 'as Message'를 추가하여 이 객체가 Message 타입임을 명확히 알림
+
             // 3. 배열의 마지막 요소를 새로운 객체로 교체한 새 배열을 반환
             return [...prevMessages.slice(0, -1), updatedLastMessage];
         }
@@ -209,6 +211,8 @@ export default function ChatPage() {
       });
     }
   };
+
+  const isSending = messages.length > 0 && messages[messages.length-1].sender === 'gpt' && messages[messages.length-1].text === '';
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -226,7 +230,7 @@ export default function ChatPage() {
                   : 'bg-gray-200 text-gray-800'
               }`}
             >
-              {msg.text || "..."}
+              {msg.text === '' ? "답변 생성 중..." : msg.collapsed ? '[답변 내용 숨김]' : msg.text}
               
               {msg.sender === 'user' && (
                 <button
@@ -237,7 +241,7 @@ export default function ChatPage() {
                   &times;
                 </button>
               )}
-              {msg.sender === 'gpt' && (
+              {msg.sender === 'gpt' && !isSending && (
                 <button
                   onClick={() => toggleCollapse(i)}
                   className="absolute -top-2 -right-2 w-5 h-5 bg-blue-400 text-white rounded-full text-xs flex items-center justify-center opacity-50 hover:opacity-100"
@@ -260,15 +264,15 @@ export default function ChatPage() {
       )}
 
       <div className="p-2 flex gap-2 border-t bg-gray-50">
-        <label className="cursor-pointer flex items-center justify-center px-3 bg-gray-200 rounded-md hover:bg-gray-300">
+        <label className={`cursor-pointer flex items-center justify-center px-3 bg-gray-200 rounded-md ${isSending ? 'cursor-not-allowed bg-gray-100' : 'hover:bg-gray-300'}`}>
           📷
-          <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+          <input type="file" accept="image/*" onChange={handleImageChange} hidden disabled={isSending} />
         </label>
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="질문을 입력하세요"
+          placeholder={isSending ? "응답을 기다리는 중..." : "질문을 입력하세요"}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.nativeEvent.isComposing && !e.shiftKey) {
               e.preventDefault();
@@ -276,11 +280,12 @@ export default function ChatPage() {
             }
           }}
           className="flex-1 border p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          disabled={isSending}
         />
         <button
           onClick={handleSend}
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
-          disabled={(!input.trim() && !imagePreview) || messages[messages.length-1]?.text === ''}
+          disabled={(!input.trim() && !imagePreview) || isSending}
         >
           전송
         </button>
