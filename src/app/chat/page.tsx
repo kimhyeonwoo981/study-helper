@@ -1,4 +1,4 @@
-// src/app/chat/page.tsx
+// src/app/chat/page.tsx 왜안대...
 
 import { Suspense } from 'react';
 import ChatClient from './ChatClient';
@@ -11,3 +11,4 @@ export default function ChatPage() {
     </Suspense>
   );
 }
+///ㄴㅁㅇㅇㄻㄴㄴㅇㅁㄹ
