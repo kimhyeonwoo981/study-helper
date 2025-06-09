@@ -180,29 +180,32 @@ export default function ChatPage() {
     if (!reader) return;
     const decoder = new TextDecoder();
     let answer = '';
-
-    // GPT 답변을 받을 빈 메시지 공간을 먼저 추가
-    setMessages((prev) => [...prev, makeGptMessage('...')]);
+    
+    // GPT 답변을 받을 초기 메시지를 먼저 추가
+    setMessages((prev) => [...prev, makeGptMessage('')]);
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
         // 스트리밍이 끝나면 최종본을 localStorage에 저장
         saveToUnitKey(userMessage, answer);
-        const finalMessages = [...updatedMessages, makeGptMessage(answer)];
-        saveMessages(finalMessages);
         break;
       }
       answer += decoder.decode(value);
       
-      // ✅ [수정된 부분] 타입 에러 해결
-      setMessages((prev) => {
-        const newMessages = [...prev];
-        // 마지막 메시지(GPT 답변)의 내용을 계속 업데이트
-        if (newMessages.length > 0 && newMessages[newMessages.length - 1].sender === 'gpt') {
-          newMessages[newMessages.length - 1].text = answer;
+      // ❗ [최종 수정된 부분] 타입 에러 해결을 위한 명확한 상태 업데이트
+      setMessages((prevMessages) => {
+        // 1. 마지막 메시지가 GPT 메시지인지 확인
+        if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].sender === 'gpt') {
+            // 2. 새로운 메시지 객체를 명시적으로 생성 (불변성 유지)
+            const updatedLastMessage: Message = {
+                ...prevMessages[prevMessages.length - 1],
+                text: answer,
+            };
+            // 3. 배열의 마지막 요소를 새로운 객체로 교체한 새 배열을 반환
+            return [...prevMessages.slice(0, -1), updatedLastMessage];
         }
-        return newMessages;
+        return prevMessages;
       });
     }
   };
@@ -223,7 +226,7 @@ export default function ChatPage() {
                   : 'bg-gray-200 text-gray-800'
               }`}
             >
-              {msg.sender === 'gpt' && msg.collapsed ? '[답변 내용 숨김]' : msg.text}
+              {msg.text || "..."}
               
               {msg.sender === 'user' && (
                 <button
@@ -277,7 +280,7 @@ export default function ChatPage() {
         <button
           onClick={handleSend}
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
-          disabled={!input.trim() && !imagePreview}
+          disabled={(!input.trim() && !imagePreview) || messages[messages.length-1]?.text === ''}
         >
           전송
         </button>
