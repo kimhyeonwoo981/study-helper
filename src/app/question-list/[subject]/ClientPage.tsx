@@ -153,7 +153,8 @@ export default function ClientPage() {
                           <textarea
                             value={editingMemo.text}
                             onChange={(e) => setEditingMemo({ ...editingMemo, text: e.target.value })}
-                            className="w-full p-2 border rounded-md text-sm"
+                            // [수정됨] 메모 입력창의 타이핑 글자색과 플레이스홀더 색상을 진하게 변경
+                            className="w-full p-2 border rounded-md text-sm text-gray-900 placeholder:text-gray-500"
                             placeholder="메모를 입력하세요..."
                             rows={3}
                           />
@@ -164,7 +165,6 @@ export default function ClientPage() {
                         </div>
                       ) : (
                         <div className="flex justify-between items-center w-full">
-                          {/* [수정됨] 질문 텍스트 스타일을 진하게 변경 */}
                           <span onClick={() => handleQuestionClick(messageId)} className="flex-1 truncate pr-2 cursor-pointer font-medium text-gray-800">
                             {msg.memo || msg.text || '[이미지]'}
                           </span>
@@ -186,7 +186,6 @@ export default function ClientPage() {
           <div className="space-y-4">
             {Object.entries(questions).map(([unit, msgs]) => (
               <div key={`chat-unit-${unit}`}>
-                {/* [수정됨] 오른쪽 채팅창의 단원 제목도 선명하게 변경 */}
                 <h2 className="text-xl font-bold text-center my-4 p-2 bg-white rounded-lg shadow-sm text-gray-700">{unit}</h2>
                 {msgs.map((msg, index) => {
                   const messageId = `message-${unit}-${index}`;
@@ -249,8 +248,7 @@ export default function ClientPage() {
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
                 placeholder="선택된 단원에 질문/메모 추가"
-                // [수정됨] 하단 입력창 플레이스홀더 색상 지정
-                className="flex-1 border p-2 rounded-md text-sm placeholder:text-gray-500"
+                className="flex-1 border p-2 rounded-md text-sm placeholder:text-gray-500 text-gray-900"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleManualAdd(); }}
               />
               <button onClick={handleManualAdd} className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-semibold">추가</button>

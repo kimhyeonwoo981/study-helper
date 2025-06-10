@@ -26,6 +26,7 @@ body {
 }
 /* src/app/globals.css 파일 맨 아래에 추가 */
 
+
 /* react-calendar 전체적인 스타일 */
 .react-calendar {
   border: 1px solid #e5e7eb; /* 테두리 색상 */
@@ -54,4 +55,11 @@ body {
 .react-calendar__tile--active {
   background: #3b82f6 !important; /* !important로 우선순위 높여 확실하게 적용 */
   color: white !important;
+}
+/* src/app/globals.css 파일 맨 아래에 추가 */
+
+/* [추가됨] 달력 상단 '2025년 6월' 내비게이션 스타일 */
+.react-calendar__navigation__label {
+  font-weight: 600; /* 굵게 */
+  color: #111827; /* 매우 진한 회색 (거의 검정) */
 }

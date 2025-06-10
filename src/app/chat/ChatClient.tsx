@@ -1,5 +1,3 @@
-// src/app/chat/ChatClient.tsx
-
 'use client';
 
 import { useSearchParams } from 'next/navigation';
@@ -223,7 +221,6 @@ ${questionText || '(텍스트 없음)'}`;
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      {/* [수정됨] 상단 날짜 글자색 추가 */}
       <div className="p-2 border-b text-sm text-center font-semibold text-gray-700">📅 {date}</div>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((msg, i) => (
@@ -269,8 +266,8 @@ ${questionText || '(텍스트 없음)'}`;
               onChange={(e) => setInput(e.target.value)}
               placeholder={isSending ? "답변을 생성하는 중입니다..." : "질문을 입력하세요"}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              // [수정됨] 입력창 플레이스홀더 글자색 추가
-              className="flex-1 border p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400"
+              // [수정됨] 타이핑하는 글자색을 진하게 변경
+              className="flex-1 border p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder:text-gray-400 text-gray-900"
               disabled={isSending}
             />
             <button
