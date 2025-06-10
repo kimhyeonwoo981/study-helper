@@ -39,11 +39,6 @@ export default function ChatClient() {
     }
   }, [date]);
 
-  // 자동 스크롤 기능 제거
-  // useEffect(() => {
-  //   scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  // }, [messages]);
-
   const saveMessages = (updated: Message[]) => {
     setMessages(updated);
     localStorage.setItem(`chat_${date}`, JSON.stringify(updated));
@@ -55,19 +50,15 @@ export default function ChatClient() {
 
     if (userMessageToDelete?.sender !== 'user') return;
 
-    // 1. 현재 채팅창에서 메시지 삭제
     currentMessages.splice(index, 2);
     saveMessages(currentMessages);
 
-    // 2. 'question_by_unit' 데이터에서도 해당 메시지 찾아 삭제
     const map = JSON.parse(localStorage.getItem('question_unit_map') || '{}');
     
-    // [수정됨] 검색 대상 map에 'Unsorted' 과목이 항상 포함되도록 보장
     if (!map.Unsorted) {
       map.Unsorted = ['미분류'];
     }
 
-    // 수정된 map을 기준으로 순회
     for (const subject in map) {
       const units = map[subject] as string[];
       for (const unit of units) {
@@ -187,7 +178,8 @@ export default function ChatClient() {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          streamedAnswer += decoder.decode(value);
+          // [수정됨] stream: true 옵션을 추가하여 멀티바이트 문자(한글) 깨짐 방지
+          streamedAnswer += decoder.decode(value, { stream: true });
     
           setMessages(prev => {
             const newMessages = [...prev];
