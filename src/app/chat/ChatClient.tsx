@@ -38,6 +38,10 @@ export default function ChatClient() {
       }
     }
   }, [date]);
+  
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const saveMessages = (updated: Message[]) => {
     setMessages(updated);
@@ -132,19 +136,54 @@ export default function ChatClient() {
     };
     
     const initialMessages = [...messages];
-    setMessages(prev => [...prev, userMessage, makeGptMessage('')]);
+    setMessages(prev => [...prev, userMessage, makeGptMessage('답변 생성 중...')]);
     
     setInput('');
     setImage(null);
     setImagePreview('');
     
     const map = JSON.parse(localStorage.getItem('question_unit_map') || '{}');
-    const prompt = imagePreview
-      ? [ { role: 'user' as const, content: [ { type: 'image_url', image_url: { url: imagePreview } }, { type: 'text', text: questionText }, ], }, ]
-      : [ { role: 'user' as const, content: `아래는 사용자의 질문입니다. 이 질문은 다음 과목의 한 단원에만 해당합니다.\n후보: ${Object.entries(map).map(([subject, units]) => (units as string[]).map((u) => `${subject} > ${u}`).join(', ')).join(', ')}\n\n질문과 가장 관련이 있다고 판단되는 과목의 단원 하나만 아래 형식으로 먼저 알려주세요.\n예시: 과목명,단원명\n\n그 다음 줄부터는 해당 단원의 관점에서 질문에 대한 답을 해주세요.\n\n질문: ${questionText}`.trim(), }, ];
+    
+    const systemMessage = {
+      role: 'system' as const,
+      content: `You are an expert AI assistant. Your primary task is to classify the user's question (based on text and/or image) into one of the provided categories. After classification, you will answer the question.
+
+- You MUST strictly follow the specified output format.
+- The first line of your response MUST be the classification in "Subject,Unit" format. Do not add any other text.
+- **Priority Rule:** It is more important to find the correct Subject than the perfect Unit. If a question is clearly related to a Subject but doesn't perfectly fit any of its listed Units, you must still choose the most plausible Unit from that relevant Subject.
+- Only if the question is completely unrelated to ANY of the provided Subjects, you MUST classify it as "Unsorted,미분류".`
+    };
+
+    const userMessageContent = `[CANDIDATES]
+${Object.entries(map).map(([subject, units]) => (units as string[]).map((u) => `- ${subject},${u}`).join('\n')).join('\n')}
+- Unsorted,미분류
+
+[INSTRUCTION]
+First, classify the following user question (text and/or image) by choosing the single most relevant "Subject,Unit" pair from the candidates list, following the priority rules in the system message. Then, answer the question.
+
+[USER QUESTION TEXT]
+${questionText || '(텍스트 없음)'}`;
+
+    const prompt = imagePreview 
+      ? [
+          systemMessage,
+          {
+            role: 'user' as const,
+            content: [
+              { type: 'text', text: userMessageContent },
+              { type: 'image_url', image_url: { url: imagePreview } }
+            ]
+          }
+        ]
+      : [
+          systemMessage,
+          { role: 'user' as const, content: userMessageContent.replace('[USER QUESTION TEXT]', '[USER QUESTION]') }
+        ];
     
     try {
-      const res = await fetch(imagePreview ? '/api/chat-vision' : '/api/chat-stream', {
+      // [수정됨] 글자 깨짐 현상을 원천적으로 방지하기 위해, 텍스트 질문도 스트리밍이 아닌 chat-vision API로 요청합니다.
+      // chat-vision API는 이미지와 텍스트를 모두 처리할 수 있습니다.
+      const res = await fetch('/api/chat-vision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: prompt, model: 'gpt-4o' }),
@@ -160,49 +199,21 @@ export default function ChatClient() {
         }
       }
 
-      if (imagePreview) {
-        const data = await res.json();
-        const finalAnswer = data.reply || '이미지에 대한 답변을 받지 못했습니다.';
-        const classification = "Unsorted,미분류"; 
-
-        const finalMessages = [...initialMessages, userMessage, makeGptMessage(finalAnswer)];
-        saveMessages(finalMessages);
-        saveToUnitKey(userMessage, finalAnswer, classification);
-
-      } else {
-        const reader = res.body?.getReader();
-        if (!reader) throw new Error('ReadableStream not available');
-        const decoder = new TextDecoder();
-        let streamedAnswer = '';
-    
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          // [수정됨] stream: true 옵션을 추가하여 멀티바이트 문자(한글) 깨짐 방지
-          streamedAnswer += decoder.decode(value, { stream: true });
-    
-          setMessages(prev => {
-            const newMessages = [...prev];
-            const lastMessage = newMessages[newMessages.length - 1];
-            if (lastMessage && lastMessage.sender === 'gpt') {
-              lastMessage.text = streamedAnswer;
-            }
-            return newMessages;
-          });
-        }
-        
-        let finalAnswer = streamedAnswer.trim();
-        let classification = "Unsorted,미분류"; 
-        const parts = streamedAnswer.split('\n\n');
-        if (parts.length > 1 && parts[0].includes(',')) {
-          classification = parts[0].trim();
-          finalAnswer = parts.slice(1).join('\n\n').trim();
-        }
-        
-        const finalMessages = [...initialMessages, userMessage, makeGptMessage(finalAnswer)];
-        saveMessages(finalMessages);
-        saveToUnitKey(userMessage, finalAnswer, classification);
+      // [수정됨] 모든 응답을 JSON으로 한 번에 받아 처리하는 방식으로 통일
+      const data = await res.json();
+      const fullResponseText = data.reply || '';
+      
+      let finalAnswer = fullResponseText.trim();
+      let classification = "Unsorted,미분류"; 
+      const parts = fullResponseText.split('\n');
+      if (parts.length > 0 && parts[0].includes(',')) {
+        classification = parts[0].trim();
+        finalAnswer = parts.slice(1).join('\n').trim() || '답변을 확인해주세요.';
       }
+      
+      const finalMessages = [...initialMessages, userMessage, makeGptMessage(finalAnswer)];
+      saveMessages(finalMessages);
+      saveToUnitKey(userMessage, finalAnswer, classification);
   
     } catch (error: any) {
       console.error('❌ GPT 응답 실패:', error);
@@ -226,14 +237,14 @@ export default function ChatClient() {
                 ) : (
                   <>
                     {msg.image && <img src={msg.image} alt="첨부 이미지" className="max-w-xs rounded-lg mb-2" />}
-                    {msg.text ? <p>{msg.text}</p> : (msg.sender === 'gpt' && !msg.image && '...')}
+                    {msg.text && <p>{msg.text}</p>}
                   </>
                 )}
 
                 {msg.sender === 'user' && !isSending && (
                   <button onClick={() => handleDelete(i)} className="absolute -top-2 -left-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-50 hover:opacity-100" title="삭제">&times;</button>
                 )}
-                {msg.sender === 'gpt' && !isSending && (msg.text || msg.image) && (
+                {msg.sender === 'gpt' && !isSending && msg.text && msg.text !== '답변 생성 중...' && (
                   <button onClick={() => toggleCollapse(i)} className="absolute -top-2 -right-2 w-5 h-5 bg-blue-400 text-white rounded-full text-xs flex items-center justify-center opacity-50 hover:opacity-100" title={msg.collapsed ? '펴기' : '접기'}>
                     {msg.collapsed ? '➕' : '➖'}
                   </button>
