@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link'; // Link 컴포넌트 import
+import Link from 'next/link';
 
-// Message 인터페이스는 변경 없음
 interface Message {
   sender: 'user' | 'gpt';
   text: string;
@@ -161,7 +160,7 @@ export default function QuestionListPage() {
                 if (name) {
                   const updated = { ...unitMap, [subject]: [...(unitMap?.[subject] || []), name] };
                   localStorage.setItem('question_unit_map', JSON.stringify(updated));
-                  setUnitMap(updated);
+                  loadUnitMap();
                 }
               }} className="text-sm bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">
                 + 단원 추가
@@ -181,7 +180,6 @@ export default function QuestionListPage() {
                 과목 삭제
               </button>
               
-              {/* [추가된 기능] 보기 버튼 */}
               <Link
                 href={`/question-list/${encodeURIComponent(subject)}`}
                 className="text-sm bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600"
@@ -197,8 +195,12 @@ export default function QuestionListPage() {
               const stateKey = `${subject}-${unit}`;
               const count = filteredData.counts[stateKey] || 0;
               const questionsToDisplay = filteredData.questions[stateKey] || [];
-              if (count === 0 && !filterText) return null;
-              if (count === 0 && filterText) return null;
+              
+              // [수정됨] 검색어가 있을 때만 개수가 0인 단원을 숨깁니다.
+              // 이렇게 하면 새로 추가된 빈 단원도 화면에 보이게 됩니다.
+              if (filterText && count === 0) {
+                return null;
+              }
 
               return (
                 <li key={unit} className="mb-1">
