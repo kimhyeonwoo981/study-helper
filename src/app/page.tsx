@@ -11,6 +11,7 @@ import {
   YAxis,
   Legend,
   ResponsiveContainer,
+  Tooltip,
 } from 'recharts';
 
 interface Message {
@@ -23,8 +24,6 @@ interface GraphData {
   date: string;
   [subject: string]: number | string;
 }
-
-const normalizeKey = (str: string) => str.replace(/\s+/g, '');
 
 export default function HomePage() {
   const [value, setValue] = useState(new Date());
@@ -43,51 +42,60 @@ export default function HomePage() {
 
   useEffect(() => {
     const today = new Date();
-    const past7 = Array.from({ length: 7 }, (_, i) => {
+    const past7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(today);
-      d.setDate(d.getDate() - (6 - i));
+      d.setDate(d.getDate() - i);
       return d;
-    });
+    }).reverse();
 
     const subjectMapRaw = localStorage.getItem('question_unit_map');
     if (!subjectMapRaw) return;
     const subjectMap = JSON.parse(subjectMapRaw) as Record<string, string[]>;
     const subjectNames = Object.keys(subjectMap);
 
-    const dateMap: Record<string, Record<string, number>> = {};
+    const countsByDate: Record<string, Record<string, number>> = {};
 
-    Object.keys(localStorage).forEach((key) => {
-      if (!key.startsWith('question_by_unit_')) return;
-      const messages: Message[] = JSON.parse(localStorage.getItem(key) || '[]');
-      const parts = key.replace('question_by_unit_', '').split('_');
-      const subjectKey = parts[0];
-      const subjectName = subjectNames.find(
-        (s) => normalizeKey(s) === subjectKey
-      );
-      if (!subjectName) return;
+    Object.entries(subjectMap).forEach(([subject, units]) => {
+      (units as string[]).forEach(unit => {
+        const key = `question_by_unit_${subject}_${unit}`;
+        const rawMessages = localStorage.getItem(key);
 
-      messages.forEach((msg) => {
-        if (msg.sender !== 'user' || !msg.date) return;
+        if (rawMessages) {
+          const messages: Message[] = JSON.parse(rawMessages);
+          messages.forEach(msg => {
+            if (msg.sender === 'user' && msg.date) {
+              const datePart = msg.date.split('T')[0];
 
-        if (!dateMap[msg.date]) dateMap[msg.date] = {};
-        if (!dateMap[msg.date][subjectName])
-          dateMap[msg.date][subjectName] = 0;
-        dateMap[msg.date][subjectName]++;
+              if (!countsByDate[datePart]) {
+                countsByDate[datePart] = {};
+              }
+              if (!countsByDate[datePart][subject]) {
+                countsByDate[datePart][subject] = 0;
+              }
+              countsByDate[datePart][subject]++;
+            }
+          });
+        }
       });
     });
 
-    const final: GraphData[] = past7.map((d) => {
-      const iso = d.toISOString().split('T')[0];
-      const formatted = `${d.getMonth() + 1}/${d.getDate()}`;
-      const entry: GraphData = { date: formatted };
-      subjectNames.forEach((s) => {
-        entry[s] = dateMap[iso]?.[s] || 0;
+    const finalChartData: GraphData[] = past7Days.map((d) => {
+      const isoDate = d.toISOString().split('T')[0];
+      const formattedDate = `${d.getMonth() + 1}/${d.getDate()}`;
+      
+      const entry: GraphData = { date: formattedDate };
+      
+      subjectNames.forEach((subjectName) => {
+        entry[subjectName] = countsByDate[isoDate]?.[subjectName] || 0;
       });
+
       return entry;
     });
 
-    setGraphData(final);
+    setGraphData(finalChartData);
   }, []);
+
+  const barColors = ['#3b82f6', '#ef4444', '#22c55e', '#a855f7', '#f97316'];
 
   return (
     <div className="flex flex-col items-center pt-12 min-h-screen bg-white">
@@ -105,20 +113,21 @@ export default function HomePage() {
       </button>
 
       <div className="w-[60%] h-64">
+        <h2 className="text-lg font-semibold text-center mb-2">최근 7일간 질문 수</h2>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={graphData}>
-            <XAxis dataKey="date" />
-            <YAxis />
+            <XAxis dataKey="date" fontSize={12} />
+            <YAxis allowDecimals={false} />
+            <Tooltip />
             <Legend />
-            {Object.keys(graphData[0] || {})
+            {(graphData[0] ? Object.keys(graphData[0]) : [])
               .filter((k) => k !== 'date')
               .map((subject, idx) => (
                 <Bar
                   key={subject}
                   dataKey={subject}
-                  fill={
-                    ['#e11d48', '#1e293b', '#10b981', '#6366f1'][idx % 4]
-                  }
+                  // [수정됨] stackId="a" 속성을 제거하여 막대가 옆으로 나란히 표시되도록 합니다.
+                  fill={barColors[idx % barColors.length]}
                 />
               ))}
           </BarChart>
