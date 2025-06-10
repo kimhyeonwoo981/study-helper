@@ -122,9 +122,11 @@ export default function QuestionListPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    // [수정됨] 배경을 흰색으로 고정
+    <div className="p-6 max-w-4xl mx-auto bg-white text-gray-800">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">📘 질문 리스트</h1>
+        {/* [수정됨] 제목 글자색을 진하게 변경 */}
+        <h1 className="text-2xl font-bold text-gray-900">📘 질문 리스트</h1>
         <button
           onClick={() => {
             const name = prompt('새 과목명을 입력하세요');
@@ -146,14 +148,15 @@ export default function QuestionListPage() {
           placeholder="질문 내용 검색..."
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md"
+          className="w-full p-2 border border-gray-300 rounded-md placeholder:text-gray-400"
         />
       </div>
 
       {Object.entries(unitMap).map(([subject, units]) => (
         <div key={subject} className="border rounded p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">📚 {subject}</h2>
+            {/* [수정됨] 과목 제목 글자색을 진하게 변경 */}
+            <h2 className="text-lg font-semibold text-gray-800">📚 {subject}</h2>
             <div className="flex items-center gap-2">
               <button onClick={() => {
                 const name = prompt('새 단원명을 입력하세요');
@@ -196,8 +199,6 @@ export default function QuestionListPage() {
               const count = filteredData.counts[stateKey] || 0;
               const questionsToDisplay = filteredData.questions[stateKey] || [];
               
-              // [수정됨] 검색어가 있을 때만 개수가 0인 단원을 숨깁니다.
-              // 이렇게 하면 새로 추가된 빈 단원도 화면에 보이게 됩니다.
               if (filterText && count === 0) {
                 return null;
               }
@@ -219,7 +220,12 @@ export default function QuestionListPage() {
                   <ul className="pl-6 list-disc text-sm text-gray-700">
                     {questionsToDisplay.map((q, i) => (
                       <li key={`${q.date}-${i}`} className="flex justify-between items-center py-1">
-                        <span>{q.text} <span className="text-xs text-gray-500">{q.date ? `(${(new Date(q.date)).getMonth() + 1}/${(new Date(q.date)).getDate()})` : ''}</span></span>
+                        {/* [수정됨] 질문 텍스트를 span으로 감싸고 글자색을 진하게 변경 */}
+                        <span>
+                          <span className="text-gray-800">{q.text}</span>
+                          {' '}
+                          <span className="text-xs text-gray-500">{q.date ? `(${(new Date(q.date)).getMonth() + 1}/${(new Date(q.date)).getDate()})` : ''}</span>
+                        </span>
                         <div className="flex gap-2 text-xs">
                           <button onClick={() => handleDeleteQuestion(subject, unit, q)} className="text-red-500 hover:underline">❌ 삭제</button>
                           <button onClick={() => openMoveModal(subject, unit, q)} className="text-green-500 hover:underline">➡ 이동</button>

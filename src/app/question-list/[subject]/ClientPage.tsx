@@ -12,9 +12,6 @@ interface Message {
   image?: string;
 }
 
-// [수정됨] 더 이상 사용하지 않으므로 함수 정의를 제거합니다.
-// const normalizeKey = (str: string) => str.replace(/\s+/g, '');
-
 export default function ClientPage() {
   const params = useParams();
   const subject = decodeURIComponent(params.subject as string);
@@ -34,12 +31,10 @@ export default function ClientPage() {
     if (!mapRaw) return;
     const map = JSON.parse(mapRaw) as Record<string, string[]>;
     
-    // [수정됨] 과목에 해당하는 단원들을 더 간단하고 정확하게 찾습니다.
     const unitsForSubject = map[subject] || [];
     
     const loaded: Record<string, Message[]> = {};
     unitsForSubject.forEach((unit: string) => {
-      // [수정됨] normalizeKey를 사용하지 않고, 공백이 포함된 subject를 그대로 사용합니다.
       const key = `question_by_unit_${subject}_${unit}`;
       const raw = localStorage.getItem(key);
       if (raw) {
@@ -73,7 +68,6 @@ export default function ClientPage() {
   const updateUnitData = (unit: string, newMessages: Message[]) => {
     const newQuestions = { ...questions, [unit]: newMessages };
     setQuestions(newQuestions);
-    // [수정됨] 데이터를 저장할 때도 normalizeKey 없이 subject를 그대로 사용합니다.
     const key = `question_by_unit_${subject}_${unit}`;
     localStorage.setItem(key, JSON.stringify(newMessages));
   };
@@ -141,10 +135,10 @@ export default function ClientPage() {
   return (
     <div className="flex h-screen bg-gray-50">
       <div className="w-1/3 border-r border-gray-200 overflow-y-auto p-6">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800 sticky top-0 bg-gray-50 py-4">📘 {subject} 질문</h1>
+        <h1 className="text-2xl font-bold mb-6 text-gray-900 sticky top-0 bg-gray-50 py-4">📘 {subject} 질문</h1>
         {Object.entries(questions).map(([unit, msgs]) => (
           <div key={unit} className="mb-6">
-            <h2 className="text-lg font-semibold text-blue-600 mb-3">📚 {unit}</h2>
+            <h2 className="text-lg font-bold text-blue-600 mb-3">📚 {unit}</h2>
             <ul className="space-y-2">
               {msgs.filter(msg => msg.sender === 'user').map((msg) => {
                   const index = msgs.findIndex(m => m === msg);
@@ -153,7 +147,7 @@ export default function ClientPage() {
                   const dateString = msg.date ? new Date(msg.date).toLocaleDateString('ko-KR') : '';
 
                   return (
-                    <li key={messageId} className="text-sm text-gray-700 p-2 rounded-md hover:bg-gray-100 flex flex-col">
+                    <li key={messageId} className="text-sm p-2 rounded-md hover:bg-gray-100 flex flex-col">
                       {isEditing ? (
                         <div className="w-full">
                           <textarea
@@ -170,7 +164,8 @@ export default function ClientPage() {
                         </div>
                       ) : (
                         <div className="flex justify-between items-center w-full">
-                          <span onClick={() => handleQuestionClick(messageId)} className="flex-1 truncate pr-2 cursor-pointer">
+                          {/* [수정됨] 질문 텍스트 스타일을 진하게 변경 */}
+                          <span onClick={() => handleQuestionClick(messageId)} className="flex-1 truncate pr-2 cursor-pointer font-medium text-gray-800">
                             {msg.memo || msg.text || '[이미지]'}
                           </span>
                           <div className="flex items-center flex-shrink-0">
@@ -191,7 +186,8 @@ export default function ClientPage() {
           <div className="space-y-4">
             {Object.entries(questions).map(([unit, msgs]) => (
               <div key={`chat-unit-${unit}`}>
-                <h2 className="text-xl font-bold text-center my-4 p-2 bg-white rounded-lg shadow-sm">{unit}</h2>
+                {/* [수정됨] 오른쪽 채팅창의 단원 제목도 선명하게 변경 */}
+                <h2 className="text-xl font-bold text-center my-4 p-2 bg-white rounded-lg shadow-sm text-gray-700">{unit}</h2>
                 {msgs.map((msg, index) => {
                   const messageId = `message-${unit}-${index}`;
                   return (
@@ -237,7 +233,7 @@ export default function ClientPage() {
               <select 
                 value={targetUnit} 
                 onChange={(e) => setTargetUnit(e.target.value)}
-                className="p-2 border rounded-md text-sm bg-gray-100"
+                className="p-2 border rounded-md text-sm bg-gray-100 text-gray-800"
               >
                 {Object.keys(questions).length > 0 ? (
                   Object.keys(questions).map(unit => <option key={unit} value={unit}>{unit}</option>)
@@ -253,7 +249,8 @@ export default function ClientPage() {
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
                 placeholder="선택된 단원에 질문/메모 추가"
-                className="flex-1 border p-2 rounded-md text-sm"
+                // [수정됨] 하단 입력창 플레이스홀더 색상 지정
+                className="flex-1 border p-2 rounded-md text-sm placeholder:text-gray-500"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleManualAdd(); }}
               />
               <button onClick={handleManualAdd} className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-semibold">추가</button>

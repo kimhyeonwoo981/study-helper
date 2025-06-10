@@ -99,7 +99,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col items-center pt-12 min-h-screen bg-white">
-      <h1 className="text-2xl font-bold mb-6">📅 STUDY_HELPER</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900">📅 STUDY_HELPER</h1>
 
       <div className="scale-110 mb-6">
         <Calendar onClickDay={handleDateClick} value={value} />
@@ -112,8 +112,9 @@ export default function HomePage() {
         질문 리스트 보기
       </button>
 
-      <div className="w-[60%] h-64">
-        <h2 className="text-lg font-semibold text-center mb-2">최근 7일간 질문 수</h2>
+      <div className="w-full max-w-3xl h-64 px-4">
+        {/* [수정됨] 차트 제목 글자색을 진하게 변경 */}
+        <h2 className="text-lg font-semibold text-center mb-2 text-gray-800">최근 7일간 질문 수</h2>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={graphData}>
             <XAxis dataKey="date" fontSize={12} />
@@ -126,7 +127,6 @@ export default function HomePage() {
                 <Bar
                   key={subject}
                   dataKey={subject}
-                  // [수정됨] stackId="a" 속성을 제거하여 막대가 옆으로 나란히 표시되도록 합니다.
                   fill={barColors[idx % barColors.length]}
                 />
               ))}
